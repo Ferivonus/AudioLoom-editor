@@ -12,7 +12,7 @@ export const defaultSettings: Settings = {
     export_format: 'wav',
     base_export_dir: '',
     folder_format: 'DD-MM-YYYY',
-    custom_prefix: 'AudioLoom',
+    custom_prefix: 'AudioLoom-editor',
     sub_folder: 'Mixler',
     ask_every_time: true,
     current_theme: 'theme-modern',
