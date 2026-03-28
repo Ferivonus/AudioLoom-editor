@@ -1,6 +1,5 @@
 @import "tailwindcss";
 
-/* 1. Tailwind Tema Değişkenleri Bağlantısı */
 @theme {
   --color-background: var(--bg-main);
   --color-surface: var(--bg-surface);
@@ -11,7 +10,6 @@
   --color-border: var(--border);
   --color-border-hover: var(--border-hover);
   
-  /* Svelte Kodun İçin Eklenen Durum (Status) Renkleri */
   --color-success: var(--success);
   --color-success-dim: var(--success-dim);
   --color-warning: var(--warning);
@@ -22,7 +20,6 @@
   --color-info-dim: var(--info-dim);
 }
 
-/* 2. Değişken Eşleştirme (Svelte içindeki class dinamikleri için) */
 [class*="theme-"] {
   --color-background: var(--bg-main);
   --color-surface: var(--bg-surface);
@@ -43,8 +40,6 @@
   --color-info-dim: var(--info-dim);
 }
 
-/* 3. Global Durum (Status) Renkleri 
-   (Tüm temalarda geçerli olacak evrensel uyarı renkleri) */
 :root, [class*="theme-"] {
   --success: #22c55e;
   --success-dim: rgba(34, 197, 94, 0.15);
@@ -59,9 +54,6 @@
   --info-dim: rgba(59, 130, 246, 0.15);
 }
 
-/* 4. Tema Renk Paletleri */
-
-/* Varsayılan Tema (Modern) */
 :root, .theme-modern {
   --bg-main: #0f0f11;
   --bg-surface: #18181b;
@@ -161,7 +153,6 @@
   --border-hover: #88c0d0;
 }
 
-/* 5. Genel Stil Kuralları */
 body {
   background-color: var(--bg-main);
   color: var(--text-main);

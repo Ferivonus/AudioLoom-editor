@@ -44,11 +44,15 @@
   const wsInstances = new Map<number, WaveSurfer>();
   const regionsPlugins = new Map<number, RegionPluginType>();
 
+  let audioCtx: AudioContext | null = null;
+  const gainNodes = new Map<number, GainNode>();
+  const stereoPanners = new Map<number, StereoPannerNode>();
+  const mediaSources = new Map<number, MediaElementAudioSourceNode>();
+
   let isPlaying: boolean = false;
   let isProcessing: boolean = false;
   let globalZoom: number = 20;
   
-  // Sıralı oynatma için değişken geri geldi
   let currentPlayingTrackIndex: number | null = null;
   
   let globalScrollX: number = 0;
@@ -67,6 +71,15 @@
 
   let globalExportFormat: string = "wav";
   let appSettings: any = null;
+
+  function initAudioContext() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+  }
 
   onMount(async () => {
     try {
@@ -166,9 +179,10 @@
     }
   }
 
-  // Sıralı oynatma kurgusuna geri dönüldü
   function handlePlayPause() {
     if (wsInstances.size === 0 || isProcessing || tracks.length === 0) return;
+    
+    initAudioContext();
     isPlaying = !isPlaying;
 
     if (isPlaying) {
@@ -194,6 +208,7 @@
 
   async function triggerFileInput(): Promise<void> {
     try {
+      initAudioContext();
       const selected = await open({
         multiple: false,
         filters: [{ name: 'Ses Dosyaları', extensions: ['mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac'] }]
@@ -302,6 +317,18 @@
       ws.destroy();
       wsInstances.delete(trackId);
       regionsPlugins.delete(trackId);
+      
+      const gainNode = gainNodes.get(trackId);
+      if (gainNode) gainNode.disconnect();
+      gainNodes.delete(trackId);
+
+      const pannerNode = stereoPanners.get(trackId);
+      if (pannerNode) pannerNode.disconnect();
+      stereoPanners.delete(trackId);
+      
+      const source = mediaSources.get(trackId);
+      if (source) source.disconnect();
+      mediaSources.delete(trackId);
     }
     tracks = tracks.filter(t => t.id !== trackId);
     if (tracks.length === 0) {
@@ -328,7 +355,7 @@
     const previousState = track.history.pop();
     if (previousState) {
       track.realPath = previousState.realPath;
-      track.audioUrl = previousState.audioUrl;
+      track.audioUrl = previousState.audioUrl.split('?')[0] + '?t=' + Date.now();
       
       const ws = wsInstances.get(track.id);
       if (ws) {
@@ -343,11 +370,24 @@
   $: {
     const isAnySolo = tracks.some(t => t.isSolo);
     tracks.forEach(track => {
+      let finalVolume = track.volume / 100;
+      finalVolume = isAnySolo ? ((track.isSolo && !track.isMuted) ? finalVolume : 0) : (track.isMuted ? 0 : finalVolume);
+      
+      let panCompensation = track.pan === 'Center' ? 1.0 : 1.414; 
+      
+      const gainNode = gainNodes.get(track.id);
+      const pannerNode = stereoPanners.get(track.id);
       const ws = wsInstances.get(track.id);
-      if (ws) {
-        let finalVolume = track.volume / 100;
-        finalVolume = isAnySolo ? ((track.isSolo && !track.isMuted) ? finalVolume : 0) : (track.isMuted ? 0 : finalVolume);
-        ws.setVolume(finalVolume);
+
+      if (gainNode && ws) {
+        gainNode.gain.value = finalVolume * panCompensation;
+        ws.setVolume(1.0); 
+      } else if (ws) {
+        ws.setVolume(Math.min(finalVolume, 1));
+      }
+
+      if (pannerNode) {
+        pannerNode.pan.value = track.pan === 'Left' ? -1 : (track.pan === 'Right' ? 1 : 0);
       }
     });
   }
@@ -403,6 +443,31 @@
     ws.on('ready', () => {
       const duration = ws.getDuration();
       if (duration > maxDuration) maxDuration = duration;
+
+      try {
+        initAudioContext();
+        if (audioCtx) {
+          if (!mediaSources.has(track.id)) {
+            const mediaElement = ws.getMediaElement();
+            const source = audioCtx.createMediaElementSource(mediaElement);
+            mediaSources.set(track.id, source);
+
+            const gainNode = audioCtx.createGain();
+            gainNodes.set(track.id, gainNode);
+
+            const pannerNode = audioCtx.createStereoPanner();
+            stereoPanners.set(track.id, pannerNode);
+
+            source.connect(gainNode);
+            gainNode.connect(pannerNode);
+            pannerNode.connect(audioCtx.destination);
+          }
+
+          tracks = [...tracks];
+        }
+      } catch (e) {
+        console.warn("Web Audio API Bağlantı Hatası:", e);
+      }
     });
 
     ws.on('scroll', (scrollLeft: number) => {
@@ -418,7 +483,6 @@
       });
     });
 
-    // Peş peşe çalma kurgusu geri geldi
     ws.on('finish', () => {
       if (isPlaying && currentPlayingTrackIndex !== null) {
         if (tracks[currentPlayingTrackIndex]?.id === track.id) {
@@ -440,6 +504,18 @@
         ws.destroy(); 
         wsInstances.delete(track.id); 
         regionsPlugins.delete(track.id);
+
+        const gainNode = gainNodes.get(track.id);
+        if (gainNode) gainNode.disconnect();
+        gainNodes.delete(track.id);
+
+        const pannerNode = stereoPanners.get(track.id);
+        if (pannerNode) pannerNode.disconnect();
+        stereoPanners.delete(track.id);
+
+        const source = mediaSources.get(track.id);
+        if (source) source.disconnect();
+        mediaSources.delete(track.id);
       }
     };
   }
@@ -456,38 +532,43 @@
     activeTrackId = null;
   }
 
-  async function handleAudioProcess(action: 'cut' | 'trim') {
+async function handleAudioProcess(action: 'cut' | 'trim') {
     if (!activeRegion || activeTrackId === null) return;
     const trackIndex = tracks.findIndex(t => t.id === activeTrackId);
     if (trackIndex === -1) return;
     
     const track = tracks[trackIndex];
+    const ws = wsInstances.get(track.id);
+    
     isProcessing = true;
     handleStop(); 
 
     try {
+      if (ws) ws.load(''); 
+
       const newFilePath = await invoke<string>('process_audio_region', {
-        action, filePath: track.realPath, startTime: activeRegion.start, endTime: activeRegion.end
+        action, 
+        filePath: track.realPath, 
+        startTime: activeRegion.start, 
+        endTime: activeRegion.end
       });
 
-      const assetUrl = convertFileSrc(newFilePath);
-      
       track.history.push({
         audioUrl: track.audioUrl,
         realPath: track.realPath
       });
 
       track.realPath = newFilePath;
-      track.audioUrl = assetUrl;
+      track.audioUrl = convertFileSrc(newFilePath) + '?t=' + Date.now();
 
       const newTheme = action === 'cut' ? cutTheme : trimTheme;
-      track.waveColorVar = newTheme.waveColorVar;
-      track.progressColorVar = newTheme.progressColorVar;
-      track.bgClass = newTheme.bgClass;
-      track.borderClass = newTheme.borderClass;
+      Object.assign(track, newTheme);
 
-      const ws = wsInstances.get(track.id);
       if (ws) {
+        ws.setOptions({
+          waveColor: track.waveColorVar,
+          progressColor: track.progressColorVar
+        });
         ws.load(track.audioUrl);
       }
 
@@ -495,16 +576,21 @@
       clearRegion();
 
     } catch (error) {
+      if (ws) ws.load(track.audioUrl);
       alert(`İşlem sırasında bir hata oluştu: ${error}`);
     } finally {
       isProcessing = false;
     }
-  }
+}
 
   onDestroy(() => {
     wsInstances.forEach(ws => ws.destroy());
     wsInstances.clear(); 
     regionsPlugins.clear();
+    mediaSources.forEach(source => source.disconnect());
+    mediaSources.clear();
+    gainNodes.forEach(node => node.disconnect());
+    stereoPanners.forEach(node => node.disconnect());
   });
 </script>
 
@@ -559,7 +645,7 @@
         </select>
       </div>
 
-      <button on:click={handleExport} disabled={isProcessing || tracks.length === 0} class="px-6 py-2.5 text-[15px] bg-primary hover:bg-primary-sec text-white rounded-lg font-semibold shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 flex items-center gap-2">
+      <button on:click={handleExport} disabled={isProcessing || tracks.length === 0} class="px-6 py-2.5 text-[15px] bg-primary hover:bg-primary-sec text-white rounded-lg font-semibold shadow-md shadow-primary/40 hover:shadow-lg hover:shadow-primary/60 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 flex items-center gap-2">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
         Dışa Aktar
       </button>
@@ -715,7 +801,7 @@
               <svg class="w-20 h-20 text-text-muted/40 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path></svg>
               <h3 class="text-2xl font-bold text-text-main mb-3 tracking-tight">Çalışma Alanı Boş</h3>
               <p class="text-text-muted text-base mb-8 leading-relaxed">Miksinize başlamak için üst menüdeki butonu kullanarak yeni bir ses dosyası yükleyin.</p>
-              <button on:click={triggerFileInput} class="px-8 py-3 text-base bg-primary hover:bg-primary-sec text-white rounded-xl font-bold shadow-[0_4px_20px_0_rgba(99,102,241,0.4)] hover:-translate-y-1 transition-all">
+              <button on:click={triggerFileInput} class="px-8 py-3 text-base bg-primary hover:bg-primary-sec text-white rounded-xl font-bold shadow-md shadow-primary/40 hover:-translate-y-1 transition-all">
                 Ses Dosyası Yükle
               </button>
             </div>
@@ -727,7 +813,7 @@
             <div class="flex-1 relative cursor-pointer px-6 py-4 w-full h-full overflow-hidden">
               <div class="absolute inset-0 top-1/2 w-full h-px bg-border/40 -translate-y-1/2 pointer-events-none z-0"></div>
               
-              <div class="relative w-full h-28 rounded-xl {track.bgClass} border-2 {track.borderClass} {currentPlayingTrackIndex !== null && tracks[currentPlayingTrackIndex]?.id === track.id ? 'border-primary shadow-[0_0_15px_rgba(99,102,241,0.5)]' : 'border-transparent'} z-10 transition-all overflow-hidden group">
+              <div class="relative w-full h-28 rounded-xl {track.bgClass} border-2 {track.borderClass} {currentPlayingTrackIndex !== null && tracks[currentPlayingTrackIndex]?.id === track.id ? 'border-primary shadow-[0_0_15px_rgba(var(--accent),0.5)]' : 'border-transparent'} z-10 transition-all overflow-hidden group">
                 <div use:waveformAction={track} class="w-full h-full"></div>
               </div>
             </div>

@@ -123,7 +123,6 @@ async fn process_audio_region(
         }
 
         let file_stem = source_path.file_stem().unwrap_or_default().to_string_lossy();
-        let extension = source_path.extension().unwrap_or_default().to_string_lossy();
         
         let local_data_dir = app.path().app_local_data_dir().map_err(|e| e.to_string())?;
         let cache_dir = local_data_dir.join("AudioLoom_Cache");
@@ -137,7 +136,7 @@ async fn process_audio_region(
             .unwrap()
             .as_secs();
 
-        let output_file_name = format!("{}_{}_{}.{}", file_stem, action, timestamp, extension);
+        let output_file_name = format!("{}_{}_{}.wav", file_stem, action, timestamp);
         let output_path = cache_dir.join(output_file_name);
 
         let mut cmd = Command::new(&ffmpeg_path);
@@ -145,9 +144,9 @@ async fn process_audio_region(
         if action == "trim" {
             cmd.arg("-y")
                .arg("-i").arg(&source_path)
+               .arg("-vn")
                .arg("-ss").arg(start_time.to_string())
                .arg("-to").arg(end_time.to_string())
-               .arg("-c").arg("copy")
                .arg(&output_path);
         } else if action == "cut" {
             let filter = format!(
@@ -158,6 +157,7 @@ async fn process_audio_region(
 
             cmd.arg("-y")
                .arg("-i").arg(&source_path)
+               .arg("-vn") 
                .arg("-filter_complex").arg(filter)
                .arg("-map").arg("[out]")
                .arg(&output_path);
@@ -211,13 +211,13 @@ async fn export_project(
 
         for (i, track) in tracks.iter().enumerate() {
             let pan_filter = match track.pan.as_str() {
-                "Left" => "stereo|c0=FL|c1=0",
-                "Right" => "stereo|c0=0|c1=FR",
+                "Left" => "stereo|c0=FL+FR|c1=0",
+                "Right" => "stereo|c0=0|c1=FL+FR",
                 _ => "stereo|c0=FL|c1=FR",
             };
 
             filter_complex.push_str(&format!(
-                "[{}:a]volume={},pan={}[a{}];", 
+                "[{}:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,volume={},pan={}[a{}];", 
                 i, track.volume, pan_filter, i
             ));
             
@@ -266,8 +266,8 @@ async fn export_single_track(
         let mut cmd = Command::new(&ffmpeg_path);
 
         let pan_filter = match pan.as_str() {
-            "Left" => "stereo|c0=FL|c1=0",
-            "Right" => "stereo|c0=0|c1=FR",
+            "Left" => "stereo|c0=FL+FR|c1=0",
+            "Right" => "stereo|c0=0|c1=FL+FR",
             _ => "stereo|c0=FL|c1=FR",
         };
 
