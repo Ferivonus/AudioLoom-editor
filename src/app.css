@@ -1,0 +1,160 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: var(--bg-main);
+  --color-surface: var(--bg-surface);
+  --color-primary: var(--accent);
+  --color-primary-sec: var(--accent-sec);
+  --color-text-main: var(--text-main);
+  --color-text-muted: var(--text-dim);
+  --color-border: var(--border);
+  --color-border-hover: var(--border-hover);
+}
+
+[class*="theme-"] {
+  --color-background: var(--bg-main);
+  --color-surface: var(--bg-surface);
+  --color-primary: var(--accent);
+  --color-primary-sec: var(--accent-sec);
+  --color-text-main: var(--text-main);
+  --color-text-muted: var(--text-dim);
+  --color-border: var(--border);
+  --color-border-hover: var(--border-hover);
+}
+
+/* 3. Tema Renk Paletleri */
+
+:root, .theme-modern {
+  --bg-main: #0f0f11;
+  --bg-surface: #18181b;
+  --accent: #6366f1;
+  --accent-sec: #a855f7;
+  --text-main: #fafafa;
+  --text-dim: #71717a;
+  --border: rgba(255, 255, 255, 0.05);
+  --border-hover: rgba(99, 102, 241, 0.3);
+}
+
+.theme-orkun-favori {
+  --bg-main: #050505;
+  --bg-surface: #0a0205;
+  --accent: #ff2d81;
+  --accent-sec: #ff0055;
+  --text-main: #ffffff;
+  --text-dim: #ff8ab7;
+  --border: rgba(255, 45, 129, 0.3);
+  --border-hover: #ff2d81;
+}
+
+.theme-lofi {
+  --bg-main: #1e1b29;
+  --bg-surface: #2d2a3d;
+  --accent: #ff9a9e;
+  --accent-sec: #fecfef;
+  --text-main: #e2e2e2;
+  --text-dim: #9381ff;
+  --border: rgba(147, 129, 255, 0.2);
+  --border-hover: #ff9a9e;
+}
+
+.theme-ghibli {
+  --bg-main: #232b2b; 
+  --bg-surface: #2e3737; 
+  --accent: #a3c9a8; 
+  --accent-sec: #ddd8b8; 
+  --text-main: #e2e8e4; 
+  --text-dim: #849490; 
+  --border: rgba(163, 201, 168, 0.15);
+  --border-hover: #a3c9a8;
+}
+
+.theme-retro {
+  --bg-main: #2b1055;
+  --bg-surface: #361a6b;
+  --accent: #f97316;
+  --accent-sec: #ec4899;
+  --text-main: #ffffff;
+  --text-dim: #fca5a5;
+  --border: rgba(249, 115, 22, 0.2);
+  --border-hover: #f97316;
+}
+
+.theme-ocean {
+  --bg-main: #010b13;
+  --bg-surface: #021526;
+  --accent: #00d2ff;
+  --accent-sec: #0072ff;
+  --text-main: #e1f5fe;
+  --text-dim: #546e7a;
+  --border: rgba(0, 210, 255, 0.1);
+  --border-hover: #00d2ff;
+}
+
+.theme-sakura {
+  --bg-main: #120f10;
+  --bg-surface: #1a1617;
+  --accent: #f472b6;
+  --accent-sec: #fb7185;
+  --text-main: #fff1f2;
+  --text-dim: #881337;
+  --border: rgba(244, 114, 182, 0.1);
+  --border-hover: #f472b6;
+}
+
+.theme-oled {
+  --bg-main: #000000;
+  --bg-surface: #000000;
+  --accent: #ffffff;
+  --accent-sec: #404040;
+  --text-main: #ffffff;
+  --text-dim: #a3a3a3;
+  --border: #262626;
+  --border-hover: #ffffff;
+}
+
+.theme-light {
+  --bg-main: #f8fafc;
+  --bg-surface: #ffffff;
+  --accent: #2563eb; 
+  --accent-sec: #0ea5e9; 
+  --text-main: #0f172a; 
+  --text-dim: #64748b;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-hover: #2563eb;
+}
+
+.theme-nord {
+  --bg-main: #2e3440;
+  --bg-surface: #3b4252;
+  --accent: #88c0d0; 
+  --accent-sec: #81a1c1; 
+  --text-main: #eceff4;
+  --text-dim: #d8dee9;
+  --border: rgba(216, 222, 233, 0.1);
+  --border-hover: #88c0d0;
+}
+
+.theme-cyberpunk {
+  --bg-main: #0c0914;
+  --bg-surface: #130e21;
+  --accent: #fcee0a; 
+  --accent-sec: #00f0ff; 
+  --text-main: #ffffff;
+  --text-dim: #ff0055; 
+  --border: rgba(0, 240, 255, 0.3);
+  --border-hover: #fcee0a;
+}
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-family: 'Inter', system-ui, sans-serif;
+  transition: background-color 0.4s ease, color 0.4s ease;
+  min-height: 100vh;
+  margin: 0;
+}
+
+::selection {
+  background: var(--accent);
+  color: #000000;
+}
