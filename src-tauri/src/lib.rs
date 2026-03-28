@@ -28,7 +28,7 @@ impl Default for Ayarlar {
             export_format: "wav".to_string(),
             base_export_dir: "".to_string(),
             folder_format: "DD-MM-YYYY".to_string(),
-            custom_prefix: "AudioLoom".to_string(),
+            custom_prefix: "AudioLoom-editor".to_string(),
             sub_folder: "Mixler".to_string(),
             ask_every_time: true,
             current_theme: "theme-modern".to_string(),
