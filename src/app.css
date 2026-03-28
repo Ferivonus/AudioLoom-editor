@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/* 1. Tailwind Tema Değişkenleri Bağlantısı */
 @theme {
   --color-background: var(--bg-main);
   --color-surface: var(--bg-surface);
@@ -9,8 +10,19 @@
   --color-text-muted: var(--text-dim);
   --color-border: var(--border);
   --color-border-hover: var(--border-hover);
+  
+  /* Svelte Kodun İçin Eklenen Durum (Status) Renkleri */
+  --color-success: var(--success);
+  --color-success-dim: var(--success-dim);
+  --color-warning: var(--warning);
+  --color-warning-dim: var(--warning-dim);
+  --color-danger: var(--danger);
+  --color-danger-dim: var(--danger-dim);
+  --color-info: var(--info);
+  --color-info-dim: var(--info-dim);
 }
 
+/* 2. Değişken Eşleştirme (Svelte içindeki class dinamikleri için) */
 [class*="theme-"] {
   --color-background: var(--bg-main);
   --color-surface: var(--bg-surface);
@@ -20,10 +32,36 @@
   --color-text-muted: var(--text-dim);
   --color-border: var(--border);
   --color-border-hover: var(--border-hover);
+  
+  --color-success: var(--success);
+  --color-success-dim: var(--success-dim);
+  --color-warning: var(--warning);
+  --color-warning-dim: var(--warning-dim);
+  --color-danger: var(--danger);
+  --color-danger-dim: var(--danger-dim);
+  --color-info: var(--info);
+  --color-info-dim: var(--info-dim);
 }
 
-/* 3. Tema Renk Paletleri */
+/* 3. Global Durum (Status) Renkleri 
+   (Tüm temalarda geçerli olacak evrensel uyarı renkleri) */
+:root, [class*="theme-"] {
+  --success: #22c55e;
+  --success-dim: rgba(34, 197, 94, 0.15);
+  
+  --warning: #f59e0b;
+  --warning-dim: rgba(245, 158, 11, 0.15);
+  
+  --danger: #ef4444;
+  --danger-dim: rgba(239, 68, 68, 0.15);
+  
+  --info: #3b82f6;
+  --info-dim: rgba(59, 130, 246, 0.15);
+}
 
+/* 4. Tema Renk Paletleri */
+
+/* Varsayılan Tema (Modern) */
 :root, .theme-modern {
   --bg-main: #0f0f11;
   --bg-surface: #18181b;
@@ -33,17 +71,6 @@
   --text-dim: #71717a;
   --border: rgba(255, 255, 255, 0.05);
   --border-hover: rgba(99, 102, 241, 0.3);
-}
-
-.theme-orkun-favori {
-  --bg-main: #050505;
-  --bg-surface: #0a0205;
-  --accent: #ff2d81;
-  --accent-sec: #ff0055;
-  --text-main: #ffffff;
-  --text-dim: #ff8ab7;
-  --border: rgba(255, 45, 129, 0.3);
-  --border-hover: #ff2d81;
 }
 
 .theme-lofi {
@@ -134,17 +161,7 @@
   --border-hover: #88c0d0;
 }
 
-.theme-cyberpunk {
-  --bg-main: #0c0914;
-  --bg-surface: #130e21;
-  --accent: #fcee0a; 
-  --accent-sec: #00f0ff; 
-  --text-main: #ffffff;
-  --text-dim: #ff0055; 
-  --border: rgba(0, 240, 255, 0.3);
-  --border-hover: #fcee0a;
-}
-
+/* 5. Genel Stil Kuralları */
 body {
   background-color: var(--bg-main);
   color: var(--text-main);

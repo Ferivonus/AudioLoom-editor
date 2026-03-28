@@ -1,5 +1,3 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use serde::Deserialize;
@@ -28,7 +26,7 @@ impl Default for Ayarlar {
             export_format: "wav".to_string(),
             base_export_dir: "".to_string(),
             folder_format: "DD-MM-YYYY".to_string(),
-            custom_prefix: "AudioLoom-editor".to_string(),
+            custom_prefix: "audioloom-editor".to_string(),
             sub_folder: "Mixler".to_string(),
             ask_every_time: true,
             current_theme: "theme-modern".to_string(),
@@ -126,7 +124,13 @@ async fn process_audio_region(
 
         let file_stem = source_path.file_stem().unwrap_or_default().to_string_lossy();
         let extension = source_path.extension().unwrap_or_default().to_string_lossy();
-        let parent_dir = source_path.parent().unwrap_or(Path::new(""));
+        
+        let local_data_dir = app.path().app_local_data_dir().map_err(|e| e.to_string())?;
+        let cache_dir = local_data_dir.join("AudioLoom_Cache");
+        
+        if !cache_dir.exists() {
+            fs::create_dir_all(&cache_dir).map_err(|e| format!("Önbellek klasörü oluşturulamadı: {}", e))?;
+        }
         
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -134,7 +138,7 @@ async fn process_audio_region(
             .as_secs();
 
         let output_file_name = format!("{}_{}_{}.{}", file_stem, action, timestamp, extension);
-        let output_path = parent_dir.join(output_file_name);
+        let output_path = cache_dir.join(output_file_name);
 
         let mut cmd = Command::new(&ffmpeg_path);
 
@@ -147,7 +151,7 @@ async fn process_audio_region(
                .arg(&output_path);
         } else if action == "cut" {
             let filter = format!(
-                "[0:a]atrim=end={start}[a1];[0:a]atrim=start={end}[a2];[a1][a2]concat=n=2:v=0:a=1[out]",
+                "[0:a]atrim=end={start},asetpts=PTS-STARTPTS[a1];[0:a]atrim=start={end},asetpts=PTS-STARTPTS[a2];[a1][a2]concat=n=2:v=0:a=1[out]",
                 start = start_time,
                 end = end_time
             );
@@ -203,7 +207,7 @@ async fn export_project(
         }
 
         let mut filter_complex = String::new();
-        let mut mix_inputs = String::new();
+        let mut concat_inputs = String::new();
 
         for (i, track) in tracks.iter().enumerate() {
             let pan_filter = match track.pan.as_str() {
@@ -217,12 +221,12 @@ async fn export_project(
                 i, track.volume, pan_filter, i
             ));
             
-            mix_inputs.push_str(&format!("[a{}]", i));
+            concat_inputs.push_str(&format!("[a{}]", i));
         }
 
         filter_complex.push_str(&format!(
-            "{}amix=inputs={}:duration=longest[out]", 
-            mix_inputs, tracks.len()
+            "{}concat=n={}:v=0:a=1[out]", 
+            concat_inputs, tracks.len()
         ));
 
         cmd.arg("-filter_complex").arg(&filter_complex)
